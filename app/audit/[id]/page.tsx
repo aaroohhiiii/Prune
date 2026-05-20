@@ -8,7 +8,7 @@ import { ToolInsightsSection } from "@/components/AuditResults/ToolInsightsSecti
 
 import { MethodologySection } from "@/components/AuditResults/MethodologySection"
 import { ResultsNavbar } from "@/components/AuditResults/ResultsNavbar"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Scale } from "lucide-react"
 
 async function getAudit(id: string) {
   const { data, error } = await supabasePublic
@@ -52,11 +52,76 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   }
 }
 
-export default async function AuditResultsPage({ params }: { params: { id: string } }) {
+export default async function AuditResultsPage({
+  params,
+  searchParams
+}: {
+  params: { id: string }
+  searchParams?: { rerun?: string }
+}) {
   const audit = await getAudit(params.id)
 
   if (!audit) {
     notFound()
+  }
+
+  // Auto-rerun handling: compute a new audit with current prices and redirect to compare
+  if (searchParams?.rerun === "true") {
+    const { getCachedPricing } = await import("@/lib/pricingService")
+    const { runAudit } = await import("@/lib/auditEngineV2")
+    const { generateEnhancedAiSummary } = await import("@/lib/enhancedAiSummary")
+    const { supabaseService } = await import("@/lib/supabase")
+    const { redirect } = await import("next/navigation")
+
+    await getCachedPricing()
+    const freshAudit = runAudit(audit.input)
+    const aiSummaryText = await generateEnhancedAiSummary({
+      input: audit.input,
+      results: freshAudit.results,
+      totalMonthlySavings: freshAudit.totalMonthlySavings,
+      totalAnnualSavings: freshAudit.totalAnnualSavings,
+      isOptimal: freshAudit.isOptimal,
+      showCredex: freshAudit.showCredex,
+    })
+
+    const { data: insertedAudit } = await supabaseService
+      .from("audits")
+      .insert({
+        input: audit.input,
+        results: freshAudit.results,
+        total_monthly_savings: freshAudit.totalMonthlySavings,
+        total_annual_savings: freshAudit.totalAnnualSavings,
+        ai_summary: aiSummaryText,
+        is_optimal: freshAudit.isOptimal,
+        show_credex: freshAudit.showCredex,
+        summary: freshAudit.summary ?? null,
+        efficiency_score: freshAudit.efficiencyScore ?? null,
+        previous_audit_id: audit.id,
+      })
+      .select("id")
+      .single()
+
+    if (insertedAudit) {
+      const { data: leadData } = await supabaseService
+        .from("leads")
+        .select("email, company_name, role")
+        .eq("audit_id", audit.id)
+        .limit(1)
+
+      if (leadData && leadData.length > 0) {
+        await supabaseService
+          .from("leads")
+          .insert({
+            audit_id: insertedAudit.id,
+            email: leadData[0].email,
+            company_name: leadData[0].company_name,
+            role: leadData[0].role,
+            team_size: audit.input.teamSize,
+          })
+      }
+
+      redirect(`/audit/${insertedAudit.id}`)
+    }
   }
 
   const totalSpend = audit.input.tools.reduce((acc, t) => acc + Math.max(0, t.monthlySpend), 0)
@@ -96,8 +161,8 @@ export default async function AuditResultsPage({ params }: { params: { id: strin
               className="group flex items-center justify-between w-full rounded-2xl border border-black/5 bg-[#F9FAFB] hover:bg-[#F3F4F6] p-5 transition-all shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-black/5 text-lg shadow-sm">
-                  📊
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-black/5 text-lg shadow-sm text-[#111]">
+                  <Scale className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-[#111]">Compare with Previous Audit</p>

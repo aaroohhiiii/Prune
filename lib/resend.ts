@@ -1,5 +1,7 @@
 import { Resend } from 'resend'
 import type { AuditResult, ToolAuditResult } from './types'
+import fs from 'fs'
+import path from 'path'
 
 const apiKey = process.env.RESEND_API_KEY
 
@@ -25,6 +27,10 @@ function getActionLabel(action: ToolAuditResult['recommendedAction']): string {
 }
 
 function buildAuditEmailHtml(audit: AuditResult, auditUrl: string): string {
+  const baseUrl = new URL(auditUrl).origin
+  const logoUrl = `${baseUrl}/VantageLogo.png`
+
+
   const topRecs = audit.results
     .filter((r) => r.monthlySavings > 0)
     .sort((a, b) => b.monthlySavings - a.monthlySavings)
@@ -66,7 +72,7 @@ function buildAuditEmailHtml(audit: AuditResult, auditUrl: string): string {
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;">
-      <div style="display:inline-block;width:32px;height:32px;background:#00C853;border-radius:8px;line-height:32px;color:white;font-weight:bold;font-size:14px;">P</div>
+      <img src="${logoUrl}" alt="Vantage" style="display:inline-block;width:32px;height:32px;border-radius:8px;vertical-align:middle;" />
       <span style="font-size:18px;font-weight:600;color:#0A0A0A;margin-left:8px;vertical-align:middle;">Vantage</span>
     </div>
 
@@ -128,11 +134,9 @@ export async function sendAuditResultsEmail({
     : 'Your AI Spend Audit Results'
 
   const html = buildAuditEmailHtml(audit, auditUrl)
-  
+
   // Local testing fallback: write to workspace file
   try {
-    const fs = require('fs')
-    const path = require('path')
     const filePath = path.join(process.cwd(), 'last_audit_email.html')
     fs.writeFileSync(filePath, html)
     console.log(`\n\x1b[32m[EMAIL TEST] Generated audit email saved to: ${filePath}\x1b[0m\n`)
@@ -165,6 +169,11 @@ export interface AffectedAuditInfo {
 }
 
 function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[]): string {
+  const firstAuditUrl = audits[0]?.auditUrl || 'http://localhost:3000'
+  const baseUrl = new URL(firstAuditUrl).origin
+  const logoUrl = `${baseUrl}/VantageLogo.png`
+
+
   const auditsHtml = audits.map((a) => `
     <div style="margin-bottom: 24px; padding: 20px; border: 1px solid #E5E7EB; border-radius: 12px; background: #FFFFFF;">
       <h3 style="margin: 0 0 12px; font-size: 16px; color: #111111; font-weight: 600;">Audit Ref: #${a.auditId.slice(0, 8)}</h3>
@@ -200,7 +209,7 @@ function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[]): string {
 
       <!-- Action Button -->
       <div style="text-align: right;">
-        <a href="${a.auditUrl}" style="display: inline-block; padding: 8px 16px; background: #00C853; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 600;">Re-run Audit & View Diff →</a>
+        <a href="${a.auditUrl}" style="display: inline-block; padding: 8px 16px; background: #00C853; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 600;">Re-run Audit  →</a>
       </div>
     </div>
   `).join('')
@@ -213,7 +222,7 @@ function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[]): string {
   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;">
-      <div style="display:inline-block;width:32px;height:32px;background:#00C853;border-radius:8px;line-height:32px;color:white;font-weight:bold;font-size:14px;">P</div>
+      <img src="${logoUrl}" alt="Vantage" style="display:inline-block;width:32px;height:32px;border-radius:8px;vertical-align:middle;" />
       <span style="font-size:18px;font-weight:600;color:#0A0A0A;margin-left:8px;vertical-align:middle;">Vantage</span>
     </div>
 
@@ -254,8 +263,6 @@ export async function sendConsolidatedPricingChangeEmail({
 
   // Local testing fallback: write to workspace file
   try {
-    const fs = require('fs')
-    const path = require('path')
     const filePath = path.join(process.cwd(), 'last_pricing_email.html')
     fs.writeFileSync(filePath, html)
     console.log(`\n\x1b[32m[EMAIL TEST] Generated pricing change email saved to: ${filePath}\x1b[0m\n`)

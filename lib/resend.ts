@@ -3,6 +3,7 @@ import type { AuditResult, ToolAuditResult } from './types'
 import fs from 'fs'
 import path from 'path'
 import { generateUnsubscribeToken, getEmailPreferences } from './emailTokens'
+import { supabaseService } from './supabase'
 
 const apiKey = process.env.RESEND_API_KEY
 
@@ -167,13 +168,38 @@ export async function sendAuditResultsEmail({
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const token = generateUnsubscribeToken(to)
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
       html,
       text: `Your AI Spend Audit Results\n\nView full results online.\n\nManage email preferences or unsubscribe: ${baseUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(to)}&token=${token}`
     })
+
+    if (error) {
+      console.error('Resend email error:', error)
+      return false
+    }
+
+    if (data?.id && supabaseService) {
+      // Async insert so DB failure doesn't block response
+      supabaseService
+        .from('email_events')
+        .insert({
+          message_id: data.id,
+          user_email: to,
+          email_type: 'audit_result',
+          sent_at: new Date().toISOString()
+        })
+        .then(({ error: dbErr }) => {
+          if (dbErr) {
+            console.error('Failed to log audit_result email event:', dbErr)
+          } else {
+            console.log(`Logged send of audit_result email (${data.id}) to ${to}`)
+          }
+        })
+    }
+
     return true
   } catch (error) {
     console.error('Resend email error:', error)
@@ -314,13 +340,38 @@ export async function sendConsolidatedPricingChangeEmail({
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const token = generateUnsubscribeToken(to)
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject: `⚠️ Pricing updates: Recommended changes to your AI Stack`,
       html,
       text: `Pricing updates for your AI Stack.\n\nView details online.\n\nManage email preferences or unsubscribe: ${baseUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(to)}&token=${token}`
     })
+
+    if (error) {
+      console.error('Resend consolidated email error:', error)
+      return false
+    }
+
+    if (data?.id && supabaseService) {
+      // Log pricing change email event asynchronously
+      supabaseService
+        .from('email_events')
+        .insert({
+          message_id: data.id,
+          user_email: to,
+          email_type: 'pricing_change',
+          sent_at: new Date().toISOString()
+        })
+        .then(({ error: dbErr }) => {
+          if (dbErr) {
+            console.error('Failed to log pricing_change email event:', dbErr)
+          } else {
+            console.log(`Logged send of pricing_change email (${data.id}) to ${to}`)
+          }
+        })
+    }
+
     return true
   } catch (error) {
     console.error('Resend consolidated email error:', error)

@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useEffect } from "react"
 import { trackEvent } from "@/lib/analytics"
 import dynamic from "next/dynamic"
+import { PricingChangesWidget } from "@/components/PricingChangesWidget"
 
 const PixelBlast = dynamic(() => import("@/components/ui/PixelBlast"), { ssr: false })
 
@@ -139,7 +140,7 @@ export default function Home() {
       </section>
 
 
-
+      <PricingChangesWidget />
 
       <section id="testimonials" className="py-24 px-6 bg-[#fcfcfc] relative z-10">
         <div className="max-w-6xl mx-auto">

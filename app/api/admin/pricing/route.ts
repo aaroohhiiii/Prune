@@ -110,6 +110,19 @@ export async function PATCH(request: Request) {
       ? activeRows[0].features
       : []
 
+    // 3a. Record this price change for the widget
+    if (oldPrice !== priceNum) {
+      await supabase
+        .from("pricing_changes")
+        .insert({
+          tool_name: toolName,
+          plan_name: planName,
+          old_price: oldPrice,
+          new_price: priceNum,
+          detected_at: new Date().toISOString(),
+        })
+    }
+
     // Mark previous active price row as inactive
     const { error: deactivateError } = await supabase
       .from("pricing_snapshot")

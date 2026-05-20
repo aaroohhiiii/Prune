@@ -1,4 +1,6 @@
 
+import { generateUnsubscribeToken } from "./emailTokens"
+
 export interface AuditChangeDetail {
   tool: string
   oldRecommendation: string
@@ -21,6 +23,8 @@ export function buildPricingChangeEmailHtml(
 ): { subject: string; html: string } {
   const subject = "Pricing Updated — Your Audit Recommendations Changed"
   const logoUrl = `${appUrl}/VantageLogo.png`
+  const token = generateUnsubscribeToken(userEmail)
+  const unsubscribeUrl = `${appUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(userEmail)}&token=${token}`
 
   // Group all tools mentioned across all changes
   const changedToolsList = Array.from(
@@ -128,6 +132,10 @@ export function buildPricingChangeEmailHtml(
       <p style="margin:24px 0 0;font-size:12px;color:#9CA3AF;line-height:1.5;text-align:center;">
         Questions about consolidating your stack? Get in touch with a Credex savings advisor.
       </p>
+      
+      <div style="margin-top:16px;text-align:center;">
+        <a href="${unsubscribeUrl}" style="display:inline-block;padding:8px 16px;background:#F3F4F6;color:#4B5563;text-decoration:none;border-radius:8px;font-size:12px;font-weight:600;border:1px solid #E5E7EB;">Manage email preferences</a>
+      </div>
     </div>
 
     <!-- Footer -->

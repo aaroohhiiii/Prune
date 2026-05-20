@@ -1,6 +1,6 @@
 import { supabaseService } from "./supabase"
 import { runAudit } from "./auditEngineV2"
-import { getCachedPricing } from "./pricingService"
+import { getCachedPricing, getOfficialPriceSync } from "./pricingService"
 import type { AuditInput, ToolAuditResult } from "./types"
 
 export interface AuditChange {
@@ -157,8 +157,16 @@ export async function recomputeAuditsForPricingChange(
     const audit = lead.audits
     if (!audit || processedAudits.has(audit.id)) continue
 
-    const auditInput = audit.input
+    const auditInput = JSON.parse(JSON.stringify(audit.input)) as AuditInput
     if (!auditInput || !auditInput.tools) continue
+
+    // Update tools with the latest official pricing so the engine computes correct savings
+    for (const tool of auditInput.tools) {
+      const officialPrice = getOfficialPriceSync(tool.tool, tool.plan, tool.seats)
+      if (officialPrice > 0) {
+        tool.monthlySpend = officialPrice
+      }
+    }
 
     // Filter by tool if specified
     if (toolName) {

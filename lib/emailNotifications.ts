@@ -1,5 +1,6 @@
 import { Resend } from "resend"
 import { buildPricingChangeEmailHtml, UserAuditChange, AuditChangeDetail } from "./emailTemplates"
+import { getEmailPreferences } from "./emailTokens"
 import fs from "fs"
 import path from "path"
 
@@ -42,6 +43,13 @@ export async function sendPricingChangeEmails(changedAudits: AuditChange[]) {
 
   // Send consolidated email to each user
   for (const [email, changesForUser] of Object.entries(userGroups)) {
+    // Check unsubscribe status
+    const preferences = await getEmailPreferences(email)
+    if (!preferences.opted_in_reaudit_emails) {
+      console.log(`Skipped email for ${email} (unsubscribed)`)
+      continue
+    }
+
     // Group changes for user by original audit ID
     const auditsMap: Record<string, { newId: string; changes: AuditChangeDetail[] }> = {}
     
@@ -90,11 +98,13 @@ export async function sendPricingChangeEmails(changedAudits: AuditChange[]) {
     }
 
     try {
+      const token = (await import("./emailTokens")).generateUnsubscribeToken(email)
       await resend.emails.send({
         from: FROM_EMAIL,
         to: email,
         subject,
-        html
+        html,
+        text: `Pricing updates for your AI Stack.\n\nView details online.\n\nManage email preferences or unsubscribe: ${APP_URL}/email-preferences/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`
       })
       result.emailsSent++
       result.userEmails.push(email)

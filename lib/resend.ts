@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import type { AuditResult, ToolAuditResult } from './types'
 import fs from 'fs'
 import path from 'path'
+import { generateUnsubscribeToken, getEmailPreferences } from './emailTokens'
 
 const apiKey = process.env.RESEND_API_KEY
 
@@ -26,9 +27,20 @@ function getActionLabel(action: ToolAuditResult['recommendedAction']): string {
   }
 }
 
-function buildAuditEmailHtml(audit: AuditResult, auditUrl: string): string {
+function buildAuditEmailHtml(audit: AuditResult, auditUrl: string, userEmail?: string): string {
   const baseUrl = new URL(auditUrl).origin
   const logoUrl = `${baseUrl}/VantageLogo.png`
+
+  let unsubscribeFooter = ""
+  if (userEmail) {
+    const token = generateUnsubscribeToken(userEmail)
+    const unsubscribeUrl = `${baseUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(userEmail)}&token=${token}`
+    unsubscribeFooter = `
+      <div style="margin-top:24px;text-align:center;">
+        <a href="${unsubscribeUrl}" style="display:inline-block;padding:8px 16px;background:#F3F4F6;color:#4B5563;text-decoration:none;border-radius:8px;font-size:12px;font-weight:600;border:1px solid #E5E7EB;">Manage email preferences</a>
+      </div>
+    `
+  }
 
 
   const topRecs = audit.results
@@ -108,6 +120,8 @@ function buildAuditEmailHtml(audit: AuditResult, auditUrl: string): string {
       <div style="margin-top:24px;text-align:center;">
         <a href="${auditUrl}" style="display:inline-block;padding:12px 32px;background:#00C853;color:white;text-decoration:none;border-radius:12px;font-size:14px;font-weight:600;">View Full Report →</a>
       </div>
+
+      ${unsubscribeFooter}
     </div>
 
     <!-- Footer -->
@@ -128,12 +142,18 @@ export async function sendAuditResultsEmail({
   audit: AuditResult
   auditUrl: string
 }): Promise<boolean> {
+  const preferences = await getEmailPreferences(to)
+  if (!preferences.opted_in_audit_results) {
+    console.log(`Skipped audit results email for ${to} (unsubscribed)`)
+    return true
+  }
+
   const savings = audit.totalMonthlySavings
   const subject = savings > 0
     ? `Your AI Spend Audit: $${savings.toFixed(0)}/mo in potential savings`
     : 'Your AI Spend Audit Results'
 
-  const html = buildAuditEmailHtml(audit, auditUrl)
+  const html = buildAuditEmailHtml(audit, auditUrl, to)
 
   // Local testing fallback: write to workspace file
   try {
@@ -145,11 +165,14 @@ export async function sendAuditResultsEmail({
   }
 
   try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const token = generateUnsubscribeToken(to)
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
       html,
+      text: `Your AI Spend Audit Results\n\nView full results online.\n\nManage email preferences or unsubscribe: ${baseUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(to)}&token=${token}`
     })
     return true
   } catch (error) {
@@ -168,10 +191,21 @@ export interface AffectedAuditInfo {
   newRecommendations: string
 }
 
-function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[]): string {
+function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[], userEmail?: string): string {
   const firstAuditUrl = audits[0]?.auditUrl || 'http://localhost:3000'
   const baseUrl = new URL(firstAuditUrl).origin
   const logoUrl = `${baseUrl}/VantageLogo.png`
+
+  let unsubscribeFooter = ""
+  if (userEmail) {
+    const token = generateUnsubscribeToken(userEmail)
+    const unsubscribeUrl = `${baseUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(userEmail)}&token=${token}`
+    unsubscribeFooter = `
+      <div style="margin-top:16px;text-align:center;">
+        <a href="${unsubscribeUrl}" style="display:inline-block;padding:8px 16px;background:#F3F4F6;color:#4B5563;text-decoration:none;border-radius:8px;font-size:12px;font-weight:600;border:1px solid #E5E7EB;">Manage email preferences</a>
+      </div>
+    `
+  }
 
 
   const auditsHtml = audits.map((a) => `
@@ -240,6 +274,7 @@ function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[]): string {
       <p style="margin:24px 0 0;font-size:13px;color:#6B7280;line-height:1.5;text-align:center;">
         Questions about consolidating your stack? Get in touch with a Credex savings advisor.
       </p>
+      ${unsubscribeFooter}
     </div>
 
     <!-- Footer -->
@@ -259,7 +294,13 @@ export async function sendConsolidatedPricingChangeEmail({
   to: string
   audits: AffectedAuditInfo[]
 }): Promise<boolean> {
-  const html = buildConsolidatedEmailHtml(audits)
+  const preferences = await getEmailPreferences(to)
+  if (!preferences.opted_in_reaudit_emails) {
+    console.log(`Skipped pricing change email for ${to} (unsubscribed)`)
+    return true
+  }
+
+  const html = buildConsolidatedEmailHtml(audits, to)
 
   // Local testing fallback: write to workspace file
   try {
@@ -271,11 +312,14 @@ export async function sendConsolidatedPricingChangeEmail({
   }
 
   try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const token = generateUnsubscribeToken(to)
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject: `⚠️ Pricing updates: Recommended changes to your AI Stack`,
       html,
+      text: `Pricing updates for your AI Stack.\n\nView details online.\n\nManage email preferences or unsubscribe: ${baseUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(to)}&token=${token}`
     })
     return true
   } catch (error) {

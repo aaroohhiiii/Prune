@@ -5,6 +5,7 @@ import { Ratelimit } from "@upstash/ratelimit"
 import { redis } from "@/lib/redis"
 import { getAuditById, saveLead } from "@/lib/supabase"
 import { sendAuditResultsEmail } from "@/lib/resend"
+import { updateEmailPreference } from "@/lib/emailTokens"
 
 // Rate limiter is only active when Upstash Redis is configured
 const ratelimit = redis
@@ -113,6 +114,15 @@ export async function POST(request: Request) {
     } catch (linkErr) {
       // Non-critical — don't fail the request if linking fails
       console.warn("[capture-lead] Failed to link previous audit:", linkErr)
+    }
+
+    // Since the user is requesting a new audit report, restore their essential email preferences
+    try {
+      const formattedEmail = body.email.trim().toLowerCase()
+      await updateEmailPreference(formattedEmail, "audit_results", true)
+      await updateEmailPreference(formattedEmail, "reaudit", true)
+    } catch (prefErr) {
+      console.warn("[capture-lead] Failed to restore email preferences:", prefErr)
     }
 
     // Send the results email (fire-and-forget — don't block response)

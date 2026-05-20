@@ -128,206 +128,17 @@ export function AuditDiffView({ currentAudit, previousAudit }: Props) {
   const prevCohort = getCohort(delta.previousEfficiency)
   const currCohort = getCohort(delta.currentEfficiency)
 
+  // Sort takeaways by urgency: warning first (0), info (1), success (2)
+  takeaways.sort((a, b) => {
+    const order = { warning: 0, info: 1, success: 2 }
+    return order[a.type] - order[b.type]
+  })
+
   return (
     <div className="space-y-8">
-      {/* Header Card */}
-      <div className="rounded-[32px] border border-[#111] bg-white p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
-        <div className="pb-6 border-b border-black/5 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-[32px] font-bold tracking-widest text-[#111] mb-1">Audit Comparison</h2>
-              <p className="text-[15px] text-[#666] font-medium">
-                {prevDate} <ArrowRight className="inline h-3.5 w-3.5 mx-1.5 text-[#9CA3AF]" /> {currDate}
-                <span className="text-[#9CA3AF] ml-2">({delta.daysBetween} days)</span>
-              </p>
-            </div>
-            {implementedCount > 0 && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ECFDF5] border border-[#A7F3D0]">
-                <Check className="h-4 w-4 text-[#059669]" />
-                <span className="text-sm font-bold text-[#059669]">
-                  {implementedCount} recommendation{implementedCount > 1 ? "s" : ""} implemented
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Savings Delta Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-black/5">
-          <div className="p-6 text-center">
-            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Previous Savings</p>
-            <p className="text-3xl font-bold text-[#111] tracking-tight">${delta.previousTotalSavings.toFixed(0)}<span className="text-sm text-[#9CA3AF] font-medium">/mo</span></p>
-          </div>
-          <div className="p-6 text-center">
-            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Current Savings</p>
-            <p className="text-3xl font-bold text-[#111] tracking-tight">${delta.currentTotalSavings.toFixed(0)}<span className="text-sm text-[#9CA3AF] font-medium">/mo</span></p>
-          </div>
-          <div className="p-6 text-center">
-            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Savings Delta</p>
-            <div className="flex flex-col items-center justify-center">
-              <DeltaIndicator value={delta.totalSavingsDelta} />
-              <p className="text-[11px] text-[#9CA3AF] mt-1 font-semibold">{savingsPercent}%</p>
-            </div>
-          </div>
-          <div className="p-6 text-center">
-            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Efficiency</p>
-            <p className="text-3xl font-bold tracking-tight">
-              <span className="text-[#9CA3AF]">{delta.previousEfficiency}</span>
-              <ArrowRight className="inline h-4 w-4 mx-2 text-[#D1D5DB]" />
-              <span className={efficiencyDelta >= 0 ? "text-[#00C853]" : "text-[#EF4444]"}>{delta.currentEfficiency}</span>
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {/* Audit Detail Links */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Link
-          href={`/audit/${previousAudit.id}`}
-          className="group relative flex flex-col justify-between p-8 rounded-[32px] border border-[#111] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
-        >
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-2">Previous Audit Detail</span>
-            <h4 className="text-[20px] font-bold tracking-wide text-[#111] transition-colors">
-              View Detailed Breakdown
-            </h4>
-            <p className="text-sm text-[#666] font-medium mt-2 leading-relaxed">
-              Analyze the historical stack optimization recommendations and spent details as of {prevDate}.
-            </p>
-          </div>
-          <div className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-[#111] group-hover:translate-x-1 transition-transform">
-            Go to Previous Audit <ArrowRight className="h-4 w-4" />
-          </div>
-        </Link>
-
-        <Link
-          href={`/audit/${currentAudit.id}`}
-          className="group relative flex flex-col justify-between p-8 rounded-[32px] border border-[#111] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
-        >
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-2">Current Audit Detail</span>
-            <h4 className="text-[20px] font-bold tracking-wide text-[#111] transition-colors">
-              View Detailed Breakdown
-            </h4>
-            <p className="text-sm text-[#666] font-medium mt-2 leading-relaxed">
-              Analyze the new live stack recommendations computed with updated tool pricing as of {currDate}.
-            </p>
-          </div>
-          <div className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-[#111] group-hover:translate-x-1 transition-transform">
-            Go to Current Audit <ArrowRight className="h-4 w-4" />
-          </div>
-        </Link>
-      </div>
-
-      {/* Comparative Insights & Benchmarks */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Key Takeaways */}
-        <div className="lg:col-span-2 rounded-[32px] border border-[#111] bg-white p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <SectionTitle>Key Comparative Insights</SectionTitle>
-          <div className="space-y-6">
-            {takeaways.map((item, index) => {
-              const IconComponent = item.type === "success" ? Sparkles : item.type === "warning" ? AlertTriangle : Info
-              const iconColor = item.type === "success" ? "text-[#00C853]" : item.type === "warning" ? "text-[#EF4444]" : "text-[#3B82F6]"
-              const iconBg = item.type === "success" ? "bg-[#ECFDF5]" : item.type === "warning" ? "bg-[#FEF2F2]" : "bg-[#EFF6FF]"
-              const iconBorder = item.type === "success" ? "border-[#A7F3D0]" : item.type === "warning" ? "border-[#FECACA]" : "border-[#BFDBFE]"
-              return (
-                <div key={index} className="flex gap-4 items-start">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${iconBg} border ${iconBorder} shrink-0 shadow-sm ${iconColor}`}>
-                    <IconComponent className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h5 className="text-[16px] font-bold text-[#111]">{item.title}</h5>
-                    <p className="text-sm text-[#666] font-medium leading-relaxed mt-1">{item.desc}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Market Benchmark */}
-        <div className="rounded-[32px] border border-[#111] bg-white p-8 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
-          <div>
-            <SectionTitle>Market Benchmarking</SectionTitle>
-            <p className="text-sm text-[#666] font-medium mb-6 leading-relaxed">
-              Where your stack ranks compared to benchmarks of over 10,000 engineering teams.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl border border-black/5 bg-[#F9FAFB]/50">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-1">Previous Cohort</span>
-                <span className={`text-xs font-bold ${prevCohort.color}`}>{prevCohort.label}</span>
-                <span className="text-[11px] text-[#666] font-medium block mt-0.5">{prevCohort.desc}</span>
-              </div>
-
-              <div className="flex justify-center my-1 text-[#9CA3AF]">
-                <ArrowRight className="h-5 w-5 rotate-90 lg:rotate-0" />
-              </div>
-
-              <div className={`p-4 rounded-2xl border ${currCohort.border} ${currCohort.bg}`}>
-                <span className="text-[9px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-1">Current Cohort</span>
-                <span className={`text-xs font-bold ${currCohort.color}`}>{currCohort.label}</span>
-                <span className="text-[11px] text-[#666] font-medium block mt-0.5">{currCohort.desc}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tools Removed */}
-      {delta.toolsRemoved.length > 0 && (
-        <div>
-          <SectionTitle>Tools Removed</SectionTitle>
-          <div className="space-y-4">
-            {delta.toolsRemoved.map((t) => (
-              <div key={t.tool} className="rounded-[24px] border border-[#111] bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-[#111]">{getToolDisplayName(t.tool)}</span>
-                      <span className="text-xs text-[#9CA3AF] font-medium">{t.previousPlan}</span>
-                      <StatusBadge status={t.previousAction === "remove" || t.previousAction === "cancel-redundant" ? "implemented" : "removed"} />
-                    </div>
-                    <p className="text-sm text-[#666] leading-relaxed">{t.reason}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-[#EF4444] line-through">${t.previousSpend.toFixed(0)}/mo</p>
-                    <p className="text-xs text-[#9CA3AF]">${(t.previousSpend * 12).toFixed(0)}/yr saved</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tools Added */}
-      {delta.toolsAdded.length > 0 && (
-        <div>
-          <SectionTitle>Tools Added</SectionTitle>
-          <div className="space-y-4">
-            {delta.toolsAdded.map((t) => (
-              <div key={t.tool} className="rounded-[24px] border border-[#111] bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300 bg-[#EFF6FF]/10">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-[#111]">{getToolDisplayName(t.tool)}</span>
-                      <span className="text-xs text-[#9CA3AF] font-medium">{t.plan}</span>
-                      <StatusBadge status="new" />
-                    </div>
-                    <p className="text-sm text-[#666] leading-relaxed">{t.reason}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-[#2563EB]">+${t.spend.toFixed(0)}/mo</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Plan Changes */}
+      {/* 2. Tool Changes & Breakdown */}
       {delta.planChanges.length > 0 && (
         <div>
           <SectionTitle>Plan Changes</SectionTitle>
@@ -358,7 +169,57 @@ export function AuditDiffView({ currentAudit, previousAudit }: Props) {
         </div>
       )}
 
-      {/* Tool-by-Tool Breakdown */}
+      {delta.toolsRemoved.length > 0 && (
+        <div>
+          <SectionTitle>Tools Removed</SectionTitle>
+          <div className="space-y-4">
+            {delta.toolsRemoved.map((t) => (
+              <div key={t.tool} className="rounded-[24px] border border-[#111] bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-[#111]">{getToolDisplayName(t.tool)}</span>
+                      <span className="text-xs text-[#9CA3AF] font-medium">{t.previousPlan}</span>
+                      <StatusBadge status={t.previousAction === "remove" || t.previousAction === "cancel-redundant" ? "implemented" : "removed"} />
+                    </div>
+                    <p className="text-sm text-[#666] leading-relaxed">{t.reason}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-[#EF4444] line-through">${t.previousSpend.toFixed(0)}/mo</p>
+                    <p className="text-xs text-[#9CA3AF]">${(t.previousSpend * 12).toFixed(0)}/yr saved</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {delta.toolsAdded.length > 0 && (
+        <div>
+          <SectionTitle>Tools Added</SectionTitle>
+          <div className="space-y-4">
+            {delta.toolsAdded.map((t) => (
+              <div key={t.tool} className="rounded-[24px] border border-[#111] bg-white p-6 shadow-sm hover:shadow-md transition-all duration-300 bg-[#EFF6FF]/10">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-[#111]">{getToolDisplayName(t.tool)}</span>
+                      <span className="text-xs text-[#9CA3AF] font-medium">{t.plan}</span>
+                      <StatusBadge status="new" />
+                    </div>
+                    <p className="text-sm text-[#666] leading-relaxed">{t.reason}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-[#2563EB]">+${t.spend.toFixed(0)}/mo</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <SectionTitle>Tool-by-Tool Breakdown</SectionTitle>
         <div className="rounded-[32px] border border-[#111] bg-white shadow-sm overflow-hidden divide-y divide-black/5">
@@ -394,6 +255,127 @@ export function AuditDiffView({ currentAudit, previousAudit }: Props) {
               </div>
             )
           })}
+        </div>
+      </div>
+
+      {/* 3. Actionable Insights */}
+      <div className="rounded-[32px] border border-[#111] bg-white p-8 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <SectionTitle>Key Comparative Insights</SectionTitle>
+        <div className="space-y-6">
+          {takeaways.map((item, index) => {
+            const IconComponent = item.type === "success" ? Sparkles : item.type === "warning" ? AlertTriangle : Info
+            const iconColor = item.type === "success" ? "text-[#00C853]" : item.type === "warning" ? "text-[#EF4444]" : "text-[#3B82F6]"
+            const iconBg = item.type === "success" ? "bg-[#ECFDF5]" : item.type === "warning" ? "bg-[#FEF2F2]" : "bg-[#EFF6FF]"
+            const iconBorder = item.type === "success" ? "border-[#A7F3D0]" : item.type === "warning" ? "border-[#FECACA]" : "border-[#BFDBFE]"
+            return (
+              <div key={index} className="flex gap-4 items-start">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${iconBg} border ${iconBorder} shrink-0 shadow-sm ${iconColor}`}>
+                  <IconComponent className="h-5 w-5" />
+                </div>
+                <div>
+                  <h5 className="text-[16px] font-bold text-[#111]">{item.title}</h5>
+                  <p className="text-sm text-[#666] font-medium leading-relaxed mt-1">{item.desc}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* 4. Metric Boxes Summary */}
+      <div className="rounded-[32px] border border-[#111] bg-white shadow-sm overflow-hidden">
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-black/5">
+          <div className="p-6 text-center">
+            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Previous Savings</p>
+            <p className="text-3xl font-bold text-[#111] tracking-tight">${delta.previousTotalSavings.toFixed(0)}<span className="text-sm text-[#9CA3AF] font-medium">/mo</span></p>
+          </div>
+          <div className="p-6 text-center">
+            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Current Savings</p>
+            <p className="text-3xl font-bold text-[#111] tracking-tight">${delta.currentTotalSavings.toFixed(0)}<span className="text-sm text-[#9CA3AF] font-medium">/mo</span></p>
+          </div>
+          <div className="p-6 text-center">
+            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Savings Delta</p>
+            <div className="flex flex-col items-center justify-center">
+              <DeltaIndicator value={delta.totalSavingsDelta} />
+              <p className="text-[11px] text-[#9CA3AF] mt-1 font-semibold">{savingsPercent}%</p>
+            </div>
+          </div>
+          <div className="p-6 text-center">
+            <p className="text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] mb-2">Efficiency</p>
+            <p className="text-3xl font-bold tracking-tight">
+              <span className="text-[#9CA3AF]">{delta.previousEfficiency}</span>
+              <ArrowRight className="inline h-4 w-4 mx-2 text-[#D1D5DB]" />
+              <span className={efficiencyDelta >= 0 ? "text-[#00C853]" : "text-[#EF4444]"}>{delta.currentEfficiency}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Market Context & Detail Links */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 rounded-[32px] border border-[#111] bg-white p-8 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
+          <div>
+            <SectionTitle>Market Benchmarking</SectionTitle>
+            <p className="text-sm text-[#666] font-medium mb-6 leading-relaxed">
+              Where your stack ranks compared to benchmarks of over 10,000 engineering teams.
+            </p>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl border border-black/5 bg-[#F9FAFB]/50">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-1">Previous Cohort</span>
+                <span className={`text-xs font-bold ${prevCohort.color}`}>{prevCohort.label}</span>
+                <span className="text-[11px] text-[#666] font-medium block mt-0.5">{prevCohort.desc}</span>
+              </div>
+
+              <div className="flex justify-center my-1 text-[#9CA3AF]">
+                <ArrowRight className="h-5 w-5 rotate-90 lg:rotate-0" />
+              </div>
+
+              <div className={`p-4 rounded-2xl border ${currCohort.border} ${currCohort.bg}`}>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-1">Current Cohort</span>
+                <span className={`text-xs font-bold ${currCohort.color}`}>{currCohort.label}</span>
+                <span className="text-[11px] text-[#666] font-medium block mt-0.5">{currCohort.desc}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <Link
+            href={`/audit/${previousAudit.id}`}
+            className="group relative flex flex-col justify-between p-8 rounded-[32px] border border-[#111] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
+          >
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-2">Previous Audit Detail</span>
+              <h4 className="text-[20px] font-bold tracking-wide text-[#111] transition-colors">
+                View Detailed Breakdown
+              </h4>
+              <p className="text-sm text-[#666] font-medium mt-2 leading-relaxed">
+                Analyze the historical stack optimization recommendations and spent details as of {prevDate}.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-[#111] group-hover:translate-x-1 transition-transform">
+              Go to Previous Audit <ArrowRight className="h-4 w-4" />
+            </div>
+          </Link>
+
+          <Link
+            href={`/audit/${currentAudit.id}`}
+            className="group relative flex flex-col justify-between p-8 rounded-[32px] border border-[#111] bg-white shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"
+          >
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] block mb-2">Current Audit Detail</span>
+              <h4 className="text-[20px] font-bold tracking-wide text-[#111] transition-colors">
+                View Detailed Breakdown
+              </h4>
+              <p className="text-sm text-[#666] font-medium mt-2 leading-relaxed">
+                Analyze the new live stack recommendations computed with updated tool pricing as of {currDate}.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-[#111] group-hover:translate-x-1 transition-transform">
+              Go to Current Audit <ArrowRight className="h-4 w-4" />
+            </div>
+          </Link>
         </div>
       </div>
     </div>

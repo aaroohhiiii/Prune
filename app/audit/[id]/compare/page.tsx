@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { supabaseService } from '@/lib/supabase'
 import Link from "next/link"
 import { supabasePublic } from "@/lib/supabase"
 import type { AuditResult } from "@/lib/types"
@@ -62,10 +63,33 @@ export default async function AuditComparePage({
   searchParams,
 }: {
   params: { id: string }
-  searchParams: { prev?: string }
+  searchParams: { prev?: string; email?: string }
 }) {
   const currentAudit = await getAudit(params.id)
   if (!currentAudit) notFound()
+
+  // Server‑side click tracking for email links
+  if (searchParams.email) {
+    try {
+      const email = searchParams.email
+      const { data, error } = await supabaseService
+        .from('email_events')
+        .select('id')
+        .eq('user_email', email)
+        .is('clicked_at', null)
+        .order('sent_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (!error && data) {
+        await supabaseService
+          .from('email_events')
+          .update({ clicked_at: new Date().toISOString() })
+          .eq('id', data.id)
+      }
+    } catch (e) {
+      console.error('Click tracking error:', e)
+    }
+  }
 
   // Determine previous audit: from query param, or from DB column
   let prevAuditId = searchParams.prev || null

@@ -121,4 +121,4 @@ A merge conflict leftover left a double destructuring block on `AuditComparePage
 - RSC + client component imports: always double-check `'use client'` is at the top of any component that uses hooks or is passed to a server component boundary.
 
 ### State of admin metrics
-Admin dashboard auth is working end-to-end locally (POST `/api/admin/auth` returns 200 + sets cookie). Kept the whole `app/admin/` folder untracked intentionally — will land it in the next commit once CI is green on the pricing tracking feature.
+Landed the admin metrics dashboard to match the website's clean aesthetic (white backgrounds, high contrast `#111` text, `#00C853` accents, rounded buttons). Fixed the Supabase query logic to accurately pull the number of audits (dropped `head: true` which was resulting in 0 counts). Completely integrated and pushed to `round2-feat`.

@@ -137,3 +137,31 @@
 **Plan for tomorrow:**
 - Launch v1.1 with the new referral engine.
 - Start building the "Enterprise Stack" bulk-upload feature.
+
+---
+
+## Day 8 - May 21, 2026
+**Hours worked:** 6
+### Pricing Tracking Pipeline & Home Page Integration
+**What I did:**
+- **Pricing Changes API** (`/api/pricing-changes`): Built endpoint that detects and surfaces live price changes across AI tools, backed by a new `pricing_changes` Supabase table with its own SQL migration.
+- **PricingChangesWidget**: Built a new home page widget that fetches and renders detected pricing changes in real-time. Dropped it into the landing page so users see live intel before even running an audit.
+- **Email Events Pipeline**: Created `email_events` Supabase table (SQL migration) and wired up the full lifecycle — sent, opened, clicked.
+- **Resend Webhook** (`/api/webhooks/resend`): Integrated Resend's webhook to automatically record `opened_at` on email open events.
+- **Click Tracking** (`/api/track-click`): Built a redirect endpoint that marks `clicked_at` in `email_events` before forwarding the user to the audit compare page.
+- **Compare Page Tracking**: Updated `/audit/[id]/compare/page.tsx` to accept an `?email=` query param and record click-throughs server-side.
+- **Admin Pricing Route**: Extended `/api/admin/pricing` with additional controls.
+- **Pricing Helpers** (`lib/pricingHelpers.ts`): Extracted shared pricing diff/format utilities into a standalone lib file.
+
+**What I learned:**
+- Supabase JS client doesn't support `GROUP BY` in `.select()` options — have to fetch the rows and aggregate manually in JS.
+- Resend webhooks send a `delivered` + `opened` sequence; need to check event type before updating the right column.
+- Next.js caches `.env` at startup — any env var additions require a full server restart to take effect.
+
+**Blockers / what I'm stuck on:**
+- Admin metrics dashboard (auth cookie flow + `AdminDashboardClient` import) kept in a separate untracked branch for now; will land in the next commit once the 500/404 auth issues are fully resolved.
+
+**Plan for tomorrow:**
+- Push and verify pricing tracking commit passes CI.
+- Land admin metrics dashboard after fixing the remaining cookie auth edge cases.
+- Wire up pricing alert emails so users get notified of detected changes automatically.

@@ -1,5 +1,6 @@
 import { verifyUnsubscribeToken, getEmailPreferences, updateEmailPreference } from "@/lib/emailTokens"
 import { redirect } from "next/navigation"
+import { SubmitButton } from "./SubmitButton"
 
 export const dynamic = "force-dynamic"
 
@@ -145,9 +146,7 @@ export default async function UnsubscribePage({ searchParams }: PageProps) {
             </div>
           </label>
 
-          <button type="submit" style={submitButtonStyle}>
-            Save Preferences
-          </button>
+          <SubmitButton style={submitButtonStyle} />
         </form>
 
         <p style={footerStyle}>

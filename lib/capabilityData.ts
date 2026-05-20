@@ -353,9 +353,29 @@ export const PLAN_CAPABILITY_DATA: PlanCapabilityProfile[] = [
  */
 
 export function getPlanCapabilities(tool: ToolName, plan: string): Capability[] {
-  const entry = PLAN_CAPABILITY_DATA.find(
-    (p) => p.tool === tool && p.plan.toLowerCase() === plan.toLowerCase()
+  const normalizedPlan = plan.toLowerCase()
+  
+  // 1. Try exact match first
+  let entry = PLAN_CAPABILITY_DATA.find(
+    (p) => p.tool === tool && p.plan.toLowerCase() === normalizedPlan
   )
+  
+  if (!entry) {
+    // 2. Try keyword match
+    entry = PLAN_CAPABILITY_DATA.find(
+      (p) => p.tool === tool && (
+        normalizedPlan.includes(p.plan.toLowerCase()) || 
+        p.plan.toLowerCase().includes(normalizedPlan)
+      )
+    )
+  }
+  
+  if (!entry) {
+    // 3. Fallback to Pro/Plus/Individual paid tier capabilities of that tool
+    const paidTiers = PLAN_CAPABILITY_DATA.filter((p) => p.tool === tool)
+    entry = paidTiers.find((p) => p.plan === "Pro" || p.plan === "Plus" || p.plan === "Individual") || paidTiers[0]
+  }
+
   return entry?.capabilities ?? []
 }
 

@@ -8,7 +8,7 @@ import { SpendDetails } from "@/components/SpendForm/SpendDetails"
 import { TeamInfo } from "@/components/SpendForm/TeamInfo"
 import { ToolSelector } from "@/components/SpendForm/ToolSelector"
 import type { AuditInput, FormState, StoredFormState, ToolInput, ToolName, UseCase } from "@/lib/types"
-import { getOfficialPrice, getToolPricing } from "@/lib/pricingData"
+import { getOfficialPrice, getToolPricing, getPlanPricing } from "@/lib/pricingData"
 import { trackEvent } from "@/lib/analytics"
 
 const LOCAL_STORAGE_KEY = "vantage-audit-form-state"
@@ -133,6 +133,21 @@ export default function SpendForm() {
       const shouldRecalculate =
         next.monthlySpend === undefined && (next.plan !== undefined || next.seats !== undefined)
 
+      const matchedPlan = plan ? getPlanPricing(tool, plan) : undefined
+      const isZeroPrice = matchedPlan ? matchedPlan.pricePerUserPerMonth === 0 : false
+      const isFreePlan = plan ? (plan.toLowerCase().includes("free") || plan.toLowerCase().includes("hobby")) : false
+
+      let calculatedSpend: number | undefined = current.monthlySpend
+      if (next.monthlySpend !== undefined) {
+        calculatedSpend = next.monthlySpend
+      } else if (shouldRecalculate) {
+        if (isZeroPrice) {
+          calculatedSpend = isFreePlan ? 0 : undefined
+        } else {
+          calculatedSpend = getOfficialPrice(tool, plan, seats)
+        }
+      }
+
       return {
         ...prev,
         toolInputs: {
@@ -140,12 +155,7 @@ export default function SpendForm() {
           [tool]: {
             ...current,
             ...next,
-            monthlySpend:
-              next.monthlySpend !== undefined
-                ? next.monthlySpend
-                : shouldRecalculate
-                ? getOfficialPrice(tool, plan, seats)
-                : current.monthlySpend,
+            monthlySpend: calculatedSpend,
             tool,
           },
         },
@@ -156,10 +166,10 @@ export default function SpendForm() {
   async function submitAudit() {
     setIsSubmitting(true)
     setError(null)
-    trackEvent('audit_submitted', undefined, { 
+    trackEvent('audit_submitted', undefined, {
       tools: state.selectedTools,
       teamSize: state.teamSize,
-      useCase: state.useCase 
+      useCase: state.useCase
     })
     try {
       const payload: AuditInput = {
@@ -208,8 +218,8 @@ export default function SpendForm() {
                       isCompleted
                         ? { background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#00C853" }
                         : isActive
-                        ? { background: "#111111", color: "#fff" }
-                        : { background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#9CA3AF" }
+                          ? { background: "#111111", color: "#fff" }
+                          : { background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#9CA3AF" }
                     }
                   >
                     {isCompleted ? "✓" : step.number}
@@ -223,13 +233,13 @@ export default function SpendForm() {
                 </div>
 
                 {i < STEPS.length - 1 && (
-                  <div 
-                    className="absolute top-5 h-px transition-all duration-700" 
-                    style={{ 
+                  <div
+                    className="absolute top-5 h-px transition-all duration-700"
+                    style={{
                       background: isCompleted ? "#00C853" : "#E5E7EB",
                       left: "100%",
                       width: "300%"
-                    }} 
+                    }}
                   />
                 )}
               </div>

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import Link from "next/link"
 import { supabasePublic } from "@/lib/supabase"
 import type { AuditResult } from "@/lib/types"
 import { HeroSection } from "@/components/AuditResults/HeroSection"
@@ -7,6 +8,7 @@ import { ToolInsightsSection } from "@/components/AuditResults/ToolInsightsSecti
 
 import { MethodologySection } from "@/components/AuditResults/MethodologySection"
 import { ResultsNavbar } from "@/components/AuditResults/ResultsNavbar"
+import { ArrowRight } from "lucide-react"
 
 async function getAudit(id: string) {
   const { data, error } = await supabasePublic
@@ -31,7 +33,8 @@ async function getAudit(id: string) {
     summary: data.summary,
     efficiencyScore: data.efficiency_score,
     referralCode: data.referral_code,
-  } as AuditResult
+    previousAuditId: data.previous_audit_id ?? null,
+  } as AuditResult & { previousAuditId: string | null }
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
@@ -57,6 +60,7 @@ export default async function AuditResultsPage({ params }: { params: { id: strin
   }
 
   const totalSpend = audit.input.tools.reduce((acc, t) => acc + Math.max(0, t.monthlySpend), 0)
+  const hasPreviousAudit = !!audit.previousAuditId
 
   return (
     <div className="min-h-screen bg-white">
@@ -83,6 +87,27 @@ export default async function AuditResultsPage({ params }: { params: { id: strin
         <AnalyticsGrid audit={audit} totalSpend={totalSpend} />
 
         <ToolInsightsSection audit={audit} />
+
+        {/* Compare with Previous Audit */}
+        {hasPreviousAudit && (
+          <div className="my-10 print:hidden">
+            <Link
+              href={`/audit/${params.id}/compare`}
+              className="group flex items-center justify-between w-full rounded-2xl border border-black/5 bg-[#F9FAFB] hover:bg-[#F3F4F6] p-5 transition-all shadow-sm"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-black/5 text-lg shadow-sm">
+                  📊
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#111]">Compare with Previous Audit</p>
+                  <p className="text-xs text-[#666] font-medium">See what changed, what you implemented, and how savings evolved.</p>
+                </div>
+              </div>
+              <ArrowRight className="h-5 w-5 text-[#9CA3AF] group-hover:text-[#111] transition-colors" />
+            </Link>
+          </div>
+        )}
 
         <div className="space-y-12">
           <MethodologySection audit={audit} />

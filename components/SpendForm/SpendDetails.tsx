@@ -152,10 +152,18 @@ export function SpendDetails({
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-[#666]">$</span>
                     <input
                       id={`${tool}-spend`}
-                      type="number"
-                      min={0}
-                      value={input.monthlySpend || ""}
-                      onChange={(e) => onToolInputChange(tool, { monthlySpend: Number(e.target.value) || 0 })}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={input.monthlySpend === 0 ? "0" : (input.monthlySpend || "")}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          onToolInputChange(tool, { 
+                            monthlySpend: val === "" ? undefined : Number(val) 
+                          })
+                        }
+                      }}
                       className={`${inputClass} pl-8`}
                     />
                   </div>

@@ -83,3 +83,42 @@ Also updated the lead capture endpoint so if someone previously unsubscribed but
 
 ---
 
+## 2026-05-21 04:00 — Pricing Tracking Pipeline & Home Page Integration
+
+### What we built
+**Pricing Changes API** — New endpoint `/api/pricing-changes` detects when tool prices shift. Backed by a new `pricing_changes` Supabase table (SQL migration included). The flow: detect a change → store it → surface it.
+
+**PricingChangesWidget** — A live widget on the landing page that pulls from the pricing changes table and shows users what's moved before they even run an audit. Dropped straight into `app/page.tsx`.
+
+**Email Events Pipeline** — Created `email_events` table (SQL migration) to track the full lifecycle of every email we send: `sent_at` → `opened_at` → `clicked_at`. This is the foundation for open/click analytics.
+
+**Resend Webhook** (`/api/webhooks/resend`) — Integrated Resend's native webhook delivery. When Resend fires the `email.opened` event, we write `opened_at` to the relevant row in `email_events`. No polling, no guessing.
+
+**Click Tracking** (`/api/track-click`) — A lightweight redirect endpoint. User clicks a link in an email → we stamp `clicked_at` in `email_events` → user lands on the audit compare page. Zero perceived latency for the user.
+
+**Compare Page Server-Side Tracking** — Updated `/audit/[id]/compare/page.tsx` to accept an `?email=` query param and record the click server-side directly in the RSC render, so it works even if JS is blocked.
+
+**Pricing Helpers** (`lib/pricingHelpers.ts`) — Pulled out shared formatting/diff utilities into a dedicated lib file so they're reusable across the pricing API and the widget.
+
+### Problems hit
+
+**Problem 8: Supabase `group` doesn't exist in select options**
+Tried to pass `{ group: 'email_type' }` to Supabase's `.select()` to get counts per type in one query. TypeScript immediately threw `Object literal may only specify known properties`. Fix: fetch all rows and aggregate manually in JS — three lines, no drama.
+
+**Problem 9: Admin metrics 500 — `ADMIN_PASSWORD` not set**
+Auth route was returning 500 "Server misconfiguration" because `ADMIN_PASSWORD` wasn't in `.env` (it was only in `.env.example`). Added it. Still had to restart the dev server since Next.js only reads `.env` at startup.
+
+**Problem 10: `AdminDashboardClient is not defined` (runtime ReferenceError)**
+The dashboard component was imported correctly in the source but Next.js threw a ReferenceError at runtime. Root cause: the component was missing the `'use client'` directive, so the module graph wasn't resolving it cleanly in the RSC context. Added `'use client'` to `AdminDashboardClient.tsx` — fixed.
+
+**Problem 11: Duplicate function signature in compare page**
+A merge conflict leftover left a double destructuring block on `AuditComparePage` — the function signature appeared twice, causing a hard syntax error (`Expression expected`). Removed the duplicate block.
+
+### What we learned
+- Next.js only reads `.env` once at startup. Any new variable requires a full server restart — hot reload doesn't pick it up.
+- Supabase JS doesn't expose SQL `GROUP BY` through `.select()` options. Always aggregate in JS.
+- Resend webhooks fire `email.delivered` and `email.opened` as separate events — check the `type` field before writing to the DB.
+- RSC + client component imports: always double-check `'use client'` is at the top of any component that uses hooks or is passed to a server component boundary.
+
+### State of admin metrics
+Admin dashboard auth is working end-to-end locally (POST `/api/admin/auth` returns 200 + sets cookie). Kept the whole `app/admin/` folder untracked intentionally — will land it in the next commit once CI is green on the pricing tracking feature.

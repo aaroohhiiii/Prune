@@ -122,3 +122,12 @@ A merge conflict leftover left a double destructuring block on `AuditComparePage
 
 ### State of admin metrics
 Landed the admin metrics dashboard to match the website's clean aesthetic (white backgrounds, high contrast `#111` text, `#00C853` accents, rounded buttons). Fixed the Supabase query logic to accurately pull the number of audits (dropped `head: true` which was resulting in 0 counts). Completely integrated and pushed to `round2-feat`.
+
+## 2026-05-21 16:30 — Automated Testing Suite Complete
+**The Win:** Implemented all 10 requested automated Vitest suites covering the pricing engine, diff calculation logic, and webhook event tracking. Setting up the mocks for Supabase and Resend was tricky, but achieving 100% passing tests for the core logic gives massive confidence in the re-audit pipeline. We didn't cut this after all.
+
+## 2026-05-21 16:45 — GitHub Actions Integration
+Set up the automated `.github/workflows/detect-prices.yml` to ping our detection endpoint every 24 hours at 2:00 AM UTC. Abstracted the internal detection logic into `lib/dailyDetection.ts` so the GitHub Action has a dedicated, secure `GET /api/detect-prices` route to hit using a Bearer token without messing with our internal admin routes.
+
+## 2026-05-21 17:00 — Documentation Wrap-up
+Finalized the PR description and reflection documents. Ensured the narrative is consistent across the board: the logic is solid, the UX is beautiful, and the tests pass, but we took a known scalability hit by running the recomputation synchronously. Time to ship it.

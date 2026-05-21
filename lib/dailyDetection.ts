@@ -27,59 +27,79 @@ export async function runDailyPriceDetection() {
   if (!leads) return { changed: [], failed: [], emailsSent: 0 }
   
   const userAuditsMap: Record<string, AffectedAuditInfo[]> = {}
-  const changed = []
+  const changed: string[] = []
   
   for (const lead of leads) {
-    const email = lead.email.trim().toLowerCase()
-    const audit = lead.audits as any
-    if (!audit || !audit.input || !audit.input.tools) continue
+    const email = (lead.email as string).trim().toLowerCase()
+    const audit = lead.audits as unknown as Record<string, unknown> | null
+    if (!audit) continue
     
     const auditInput = audit.input as AuditInput
+    const auditCreatedAt = audit.created_at as string
+    const auditId = audit.id as string
+    const auditResults = audit.results as ToolAuditResult[]
+    const auditSavings = audit.total_monthly_savings as number
+    
+    if (!auditInput?.tools) continue
+    
     const changesSummary: string[] = []
     let pricingChanged = false
     
     for (const t of auditInput.tools) {
-      const historicalPlan = await getPricingAsOf(t.tool as ToolName, t.plan, new Date(audit.created_at))
-      const currentPlan = getPlanPricingSync(t.tool as ToolName, t.plan)
-      const oldPrice = historicalPlan ? historicalPlan.pricePerUserPerMonth : t.monthlySpend / Math.max(1, t.seats)
-      const currentPrice = currentPlan ? currentPlan.pricePerUserPerMonth : 0
+      const toolName = (t as Record<string, unknown>).tool as ToolName
+      const plan = (t as Record<string, unknown>).plan as string
+      const monthlySpend = (t as Record<string, unknown>).monthlySpend as number
+      const seats = (t as Record<string, unknown>).seats as number
+      
+      const historicalPlan = await getPricingAsOf(toolName, plan, new Date(auditCreatedAt))
+      const currentPlan = getPlanPricingSync(toolName, plan)
+      
+      const oldPrice = historicalPlan?.pricePerUserPerMonth ?? (monthlySpend / Math.max(1, seats))
+      const currentPrice = currentPlan?.pricePerUserPerMonth ?? 0
       
       if (oldPrice !== currentPrice) {
         pricingChanged = true
-        changesSummary.push(`${t.tool.replace("-", " ")} (${t.plan}): changed from $${oldPrice.toFixed(0)} to $${currentPrice.toFixed(0)}`)
+        changesSummary.push(`${toolName.replace("-", " ")} (${plan}): $${oldPrice.toFixed(0)} → $${currentPrice.toFixed(0)}`)
       }
     }
     
     if (pricingChanged) {
-      changed.push(audit.id)
+      changed.push(auditId)
       const newAudit = runAudit(auditInput)
+      
       const formatRecs = (resultsList: ToolAuditResult[]) => {
-        const recs = resultsList.filter(r => r.monthlySavings > 0).map(r => `${r.tool.replace("-", " ")}: ${r.recommendedAction}`)
+        const recs = resultsList
+          .filter((r) => r.monthlySavings > 0)
+          .map((r) => `${r.tool.replace("-", " ")}: ${r.recommendedAction}`)
         return recs.length > 0 ? recs.join(", ") : "Stack is fully optimized"
       }
       
       const auditInfo: AffectedAuditInfo = {
-        auditId: audit.id,
-        auditUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/audit/${audit.id}?rerun=true`,
+        auditId,
+        auditUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/audit/${auditId}?rerun=true`,
         changesSummary,
-        oldSavings: audit.total_monthly_savings,
+        oldSavings: auditSavings,
         newSavings: newAudit.totalMonthlySavings,
-        oldRecommendations: formatRecs(audit.results),
+        oldRecommendations: formatRecs(auditResults),
         newRecommendations: formatRecs(newAudit.results),
       }
-      if (!userAuditsMap[email]) userAuditsMap[email] = []
+      
+      if (!userAuditsMap[email]) {
+        userAuditsMap[email] = []
+      }
       userAuditsMap[email].push(auditInfo)
     }
   }
   
   let emailsSent = 0
-  const failed = []
+  const failed: Array<{ tool: string }> = []
+  
   for (const [email, affectedAudits] of Object.entries(userAuditsMap)) {
     try {
       const success = await sendConsolidatedPricingChangeEmail({ to: email, audits: affectedAudits })
       if (success) emailsSent++
-      else failed.push({ tool: email }) // logging email as tool for error formatting compatibility
-    } catch (e) {
+      else failed.push({ tool: email })
+    } catch {
       failed.push({ tool: email })
     }
   }

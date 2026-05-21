@@ -37,15 +37,14 @@ export async function GET(req: Request) {
       failed: result.failed.length,
       emailsSent: result.emailsSent
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('[DETECT-PRICES] Error:', error)
     
-    // Send admin alert about error
-    await sendAdminAlert(`Price detection failed: ${error.message}`)
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    await sendAdminAlert(`Price detection failed: ${message}`)
     
-    // Return error (GitHub Actions will see 500 and log it)
     return Response.json(
-      { ok: false, error: error.message },
+      { ok: false, error: message },
       { status: 500 }
     )
   }

@@ -1,7 +1,5 @@
 "use client"
 
-export default PricingChangesWidget
-
 import { useEffect, useState } from "react"
 import { formatDate } from "@/lib/pricingHelpers"
 import { ToolIcon, TOOL_DISPLAY_NAMES } from "@/components/ui/ToolIcon"

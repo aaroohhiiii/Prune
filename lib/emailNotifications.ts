@@ -1,8 +1,6 @@
 import { Resend } from "resend"
 import { buildPricingChangeEmailHtml, UserAuditChange, AuditChangeDetail } from "./emailTemplates"
 import { getEmailPreferences } from "./emailTokens"
-import fs from "fs"
-import path from "path"
 
 const apiKey = process.env.RESEND_API_KEY
 const resend = apiKey ? new Resend(apiKey) : null
@@ -81,15 +79,6 @@ export async function sendPricingChangeEmails(changedAudits: AuditChange[]) {
     }))
 
     const { subject, html } = buildPricingChangeEmailHtml(email, userAuditChanges, APP_URL)
-
-    // Local testing fallback: write to workspace file
-    try {
-      const filePath = path.join(process.cwd(), "last_pricing_email.html")
-      fs.writeFileSync(filePath, html)
-      console.log(`\n\x1b[32m[EMAIL TEST] Pricing change email for ${email} saved to: ${filePath}\x1b[0m\n`)
-    } catch (fsErr) {
-      console.error("Failed to write local email file:", fsErr)
-    }
 
     if (!resend) {
       console.warn("[emailNotifications] Resend client not initialized. Email was not sent via API.")

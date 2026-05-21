@@ -5,6 +5,7 @@ import { Ratelimit } from "@upstash/ratelimit"
 import { redis } from "@/lib/redis"
 import { getAuditById, saveLead } from "@/lib/supabase"
 import { sendAuditResultsEmail } from "@/lib/resend"
+import { updateEmailPreference } from "@/lib/emailTokens"
 
 // Rate limiter is only active when Upstash Redis is configured
 const ratelimit = redis
@@ -87,6 +88,41 @@ export async function POST(request: Request) {
         { message: "Failed to save lead" },
         { status: 500 },
       )
+    }
+
+    // Auto-link this audit to the user's most recent previous audit
+    // This powers the "Compare with Previous Audit" feature
+    try {
+      const { getSupabaseServerClient } = await import("@/lib/supabase")
+      const supabaseServer = getSupabaseServerClient()
+      
+      // Find the user's most recent OTHER audit (via leads table)
+      const { data: previousLeads } = await supabaseServer
+        .from("leads")
+        .select("audit_id")
+        .eq("email", body.email.trim().toLowerCase())
+        .neq("audit_id", body.auditId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+
+      if (previousLeads && previousLeads.length > 0) {
+        await supabaseServer
+          .from("audits")
+          .update({ previous_audit_id: previousLeads[0].audit_id })
+          .eq("id", body.auditId)
+      }
+    } catch (linkErr) {
+      // Non-critical — don't fail the request if linking fails
+      console.warn("[capture-lead] Failed to link previous audit:", linkErr)
+    }
+
+    // Since the user is requesting a new audit report, restore their essential email preferences
+    try {
+      const formattedEmail = body.email.trim().toLowerCase()
+      await updateEmailPreference(formattedEmail, "audit_results", true)
+      await updateEmailPreference(formattedEmail, "reaudit", true)
+    } catch (prefErr) {
+      console.warn("[capture-lead] Failed to restore email preferences:", prefErr)
     }
 
     // Send the results email (fire-and-forget — don't block response)

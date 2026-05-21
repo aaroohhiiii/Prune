@@ -1,0 +1,16 @@
+name: Daily Price Detection
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  detect-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run price detection
+        run: |
+          curl -X GET https://yourdomain.vercel.app/api/detect-prices \
+            -H "Authorization: Bearer ${{ secrets.PRICE_DETECTION_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -w "\nResponse Status: %{http_code}\n"

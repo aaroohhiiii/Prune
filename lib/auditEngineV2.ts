@@ -1,4 +1,4 @@
-import { getOfficialPrice, getToolPricing } from "@/lib/pricingData"
+import { getOfficialPriceSync as getOfficialPrice, getToolPricingSync as getToolPricing } from "@/lib/pricingService"
 import { getPlanCapabilities, getRequiredCapabilitiesForUseCase } from "@/lib/capabilityData"
 import { calculateMarginalUtility, findDuplicateCapabilities, findUncoveredCapabilities, getStackCapabilities, recommendAction } from "@/lib/capabilityAnalysis"
 import type { AuditInput, AuditOutput, ToolAuditResult, ToolInput, ToolName, AuditFinding, AuditStackSummary, Capability } from "@/lib/types"

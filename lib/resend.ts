@@ -30,7 +30,6 @@ function getActionLabel(action: ToolAuditResult['recommendedAction']): string {
 
 function buildAuditEmailHtml(audit: AuditResult, auditUrl: string, userEmail?: string): string {
   const baseUrl = new URL(auditUrl).origin
-  const logoUrl = `${baseUrl}/VantageLogo.png`
 
   let unsubscribeFooter = ""
   if (userEmail) {
@@ -85,7 +84,6 @@ function buildAuditEmailHtml(audit: AuditResult, auditUrl: string, userEmail?: s
   <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;">
-      <img src="${logoUrl}" alt="Vantage" style="display:inline-block;width:32px;height:32px;border-radius:8px;vertical-align:middle;" />
       <span style="font-size:18px;font-weight:600;color:#0A0A0A;margin-left:8px;vertical-align:middle;">Vantage</span>
     </div>
 
@@ -220,7 +218,6 @@ export interface AffectedAuditInfo {
 function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[], userEmail?: string): string {
   const firstAuditUrl = audits[0]?.auditUrl || 'http://localhost:3000'
   const baseUrl = new URL(firstAuditUrl).origin
-  const logoUrl = `${baseUrl}/VantageLogo.png`
 
   let unsubscribeFooter = ""
   if (userEmail) {
@@ -282,7 +279,6 @@ function buildConsolidatedEmailHtml(audits: AffectedAuditInfo[], userEmail?: str
   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;">
-      <img src="${logoUrl}" alt="Vantage" style="display:inline-block;width:32px;height:32px;border-radius:8px;vertical-align:middle;" />
       <span style="font-size:18px;font-weight:600;color:#0A0A0A;margin-left:8px;vertical-align:middle;">Vantage</span>
     </div>
 

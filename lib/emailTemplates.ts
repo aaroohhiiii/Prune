@@ -22,7 +22,6 @@ export function buildPricingChangeEmailHtml(
   appUrl: string = "http://localhost:3000"
 ): { subject: string; html: string } {
   const subject = "Pricing Updated — Your Audit Recommendations Changed"
-  const logoUrl = `${appUrl}/VantageLogo.png`
   const token = generateUnsubscribeToken(userEmail)
   const unsubscribeUrl = `${appUrl}/email-preferences/unsubscribe?email=${encodeURIComponent(userEmail)}&token=${token}`
 
@@ -112,7 +111,6 @@ export function buildPricingChangeEmailHtml(
   <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
     <!-- Header -->
     <div style="text-align:center;margin-bottom:32px;">
-      <img src="${logoUrl}" alt="Vantage" style="display:inline-block;width:32px;height:32px;border-radius:8px;vertical-align:middle;" />
       <span style="font-size:18px;font-weight:600;color:#0A0A0A;margin-left:8px;vertical-align:middle;">Vantage</span>
     </div>
 
